@@ -21,12 +21,11 @@ suite('StorageTests', function(){
     configFile = path.join(__dirname,'../config/testconfig.json');
     async.series([
       function (cb) {
-        fs.exists(configFile, function (configPresent) {
+        path.exists(configFile, function (configPresent) {
           var err;
           if (configPresent) {
             config = require(configFile);
-            authFn = async.apply(authenticate.getTokensNative, config);
-            console.log("logged in");
+            authFn = async.apply(authenticate.getTokens, config);
           } else {
             err = new Error('config file: ' + configFile + ' not found. Did you create one based on the sample provided?');
           }
@@ -39,19 +38,17 @@ suite('StorageTests', function(){
     ], function (err) {
       done(err);
     });
-  });
+  });        
 
   suite('Create Container, then file, then delete both', function(){
     test('happy test', function(done){
       var storageSwift = new storage.OpenStackStorage (authFn, function(err, res, tokens) {
-        if (err) { console.log(err)}
         assert(!err);
         assert(tokens);
-        console.log(tokens);
         async.waterfall(
           [
             function(cb) {
-              var containerName = "EngTest" + Date.now(); // use a container name that's unlikely to exist
+              var containerName = "EngTest" + Date.now(); // use a container name that's unlikely to exist 
               cb(null, containerName);
             },
             function(containerName, cb) {
@@ -59,16 +56,7 @@ suite('StorageTests', function(){
                 assert(!err, "error creating container");
                 assert(statusCode, "no statusCode");
                 assert((statusCode >= 200) && (statusCode < 300), "non successful statusCode: " + statusCode);
-                console.log("made it!");
                 cb(err, containerName);
-              });
-            },
-            function(containerName, cb) {
-              console.log("about to do some stuff");
-              storageSwift.getContainers(function (err, files) {
-                console.log("made it!");
-                console.log(files);
-                cb(err,containerName);
               });
             },
             function(containerName, cb) {
@@ -77,25 +65,6 @@ suite('StorageTests', function(){
                 assert(!err, "error sending file");
                 assert(statusCode, "no statusCode");
                 assert((statusCode >= 200) && (statusCode < 300), "non successful statusCode: " + statusCode);
-                console.log("Function before the one you want");
-                cb(err, containerName);
-              });
-            },
-            function(containerName, cb) {
-              console.log("getting there");
-              // receive the file, sent previously, as a stream, and compare it to the file data
-              storageSwift.getInfo(containerName, testRemoteFileName, function(err, files) {
-                console.log("Obtaining files from container");
-                console.log(files);
-                cb(err, containerName);
-              });
-            },
-            function(containerName, cb) {
-              // receive the file, sent previously, as a stream, and compare it to the file data
-              console.log("ABOUT TO THROW DOWN RIGHT NAO");
-              storageSwift.getFiles(containerName, function(err, files) {
-                console.log("Obtaining files from container");
-                console.log(files);
                 cb(err, containerName);
               });
             },
@@ -107,7 +76,6 @@ suite('StorageTests', function(){
                 assert(statusCode, "no statusCode");
                 assert((statusCode >= 200) && (statusCode < 300), "non successful statusCode: " + statusCode);
                 var receivedData = receiverStream.getBuffer().toString('utf8');
-                console.log(receivedData);
                 assert.strictEqual(receivedData, fileDataToSend, "Sent and received data should match");
                 cb(err, containerName);
               });
@@ -136,9 +104,21 @@ suite('StorageTests', function(){
             },
             function(containerName, cb) {
               // delete the remote file
+              storageSwift.deleteFile(containerName, testRemoteFileName, function (err, statusCode) {
+                assert(!err, "error deleting file");
+                assert(statusCode, "no statusCode");
+                assert((statusCode >= 200) && (statusCode < 300), "non successful statusCode: " + statusCode);
+                cb(err, containerName);
+              });
             },
             function(containerName, cb) {
               // delete the remote container
+              storageSwift.deleteContainer(containerName, function (err, statusCode) {
+                assert(!err, "error deleting container");
+                assert(statusCode, "no statusCode");
+                assert((statusCode >= 200) && (statusCode < 300), "non successful statusCode: " + statusCode);
+                cb(err, containerName);
+              });
             }
           ],
           function(err, containerName) {
@@ -150,3 +130,4 @@ suite('StorageTests', function(){
     });
   });
 });
+
