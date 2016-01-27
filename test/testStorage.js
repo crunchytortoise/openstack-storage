@@ -21,11 +21,11 @@ suite('StorageTests', function(){
     configFile = path.join(__dirname,'../config/testconfig.json');
     async.series([
       function (cb) {
-        path.exists(configFile, function (configPresent) {
+        fs.exists(configFile, function (configPresent) {
           var err;
           if (configPresent) {
             config = require(configFile);
-            authFn = async.apply(authenticate.getTokens, config);
+            authFn = async.apply(authenticate.getTokensNative, config);
           } else {
             err = new Error('config file: ' + configFile + ' not found. Did you create one based on the sample provided?');
           }
@@ -99,6 +99,14 @@ suite('StorageTests', function(){
                 assert((statusCode >= 200) && (statusCode < 300), "non successful statusCode: " + statusCode);
                 var receivedData = fs.readFileSync(testLocalFile2, 'utf8');
                 assert.strictEqual(receivedData, fileDataToSend, "Sent and received data should match");
+                cb(err, containerName);
+              });
+            },
+            function(containerName, cb) {
+              // Get metadata of the file that was transfered.
+              storageSwift.getFileMetadata(containerName, testRemoteFileName, function(err, body) {
+                assert(!err, "error receiving file metadata");
+                console.log(body);
                 cb(err, containerName);
               });
             },
